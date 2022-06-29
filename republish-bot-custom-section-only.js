@@ -9,8 +9,8 @@ let dataArray;
 //Configure
 const inputFilePath = "CustomTemplateIdList.csv";
 const outputFilePath = "done.csv";
-const numberOfBots = 1;
-const debugMode = false;
+const numberOfBots = 20;
+const debugMode = true;
 const taskTimeOut = 1200 * 1000; //in milliseconds
 const retryLimit = 1; //how many retries if a task fails
 const botUsername = process.env.REALTAIR_USERNAME;
@@ -26,9 +26,9 @@ GetInputFromFile();
     maxConcurrency: numberOfBots,
     timeout: taskTimeOut,
     retryLimit: retryLimit,
-    monitor: debugMode,
+    monitor: !debugMode,
     puppeteerOptions: {
-      headless: debugMode,
+      headless: !debugMode,
       args: [
         "--no-sandbox",
         "--disable-setuid-sandbox",
@@ -40,7 +40,7 @@ GetInputFromFile();
         "--disable-gpu",
       ],
     },
-    workerCreationDelay: 60000,
+    workerCreationDelay: 30000,
   });
 
   await cluster.task(async ({ page, data: customTemplateId }) => {
@@ -55,6 +55,7 @@ GetInputFromFile();
     const pitchProdURL = "https://pitch.realtair.com";
     const pitchStagingURL = "https://staging-pitch.realtair.com";
     const pitchDashboardURL = pitchProdURL;
+    let compoHeader;
 
     await Login(page, pitchDashboardURL);
 
@@ -140,39 +141,55 @@ GetInputFromFile();
           // console.log("Iframe loaded");
           let elementHandle;
           let frame;
-          try {
-            await page.waitForSelector(iframeClassName);
-            await page.waitForSelector(loadingScreenId, { hidden: true });
-            elementHandle = await page.$(iframeClassName);
-            frame = await elementHandle.contentFrame();
-          } catch (error) {
-            console.error(
-              "Error waiting for component frame in componentId: " +
-                customTemplateId
-            );
-            console.error(error);
-          }
+          //try {
+          await page.waitForSelector(iframeClassName);
+          await page.waitForSelector(loadingScreenId, { hidden: true });
+          elementHandle = await page.$(iframeClassName);
+          frame = await elementHandle.contentFrame();
+          // } catch (error) {
+          //   console.error(
+          //     "Error waiting for component frame in componentId: " +
+          //       customTemplateId
+          //   );
+          //   console.error(error);
+          // }
 
           //Wait for the iframe to pop out and click on the submit button
           let finishedFlag = false;
+          //getCompoHeader
+          try {
+            compoHeader = await frame.$eval(".hidden-xs", element => element.textContent.match(/'([^']+)'/)[1]);            
+          } catch (error) {
+            console.error("Can't find compo name");
+          }
+          //console.log(compoHeader);
           while (!finishedFlag) {
-            //try {
-
-            await frame.waitForSelector(loadingScreenId, { timeout: 120000 });
-            //await frame.waitForSelector(loadingScreenId, { hidden: true });
-            await frame.waitForSelector(submitBtnId, { visible: true });
-            await frame.$eval(submitBtnId, (submitBtn) => {
-              submitBtn.click();
-            });
+            try {
+              if((await page.$(iframeClassName)) !== null){
+                //await frame.waitForSelector(loadingScreenId, { timeout: 120000 });
+                //await frame.waitForSelector(loadingScreenId, { hidden: true });
+                await frame.waitForSelector(submitBtnId, { visible: true });
+                await frame.$eval(submitBtnId, (submitBtn) => {
+                  submitBtn.click();
+                });
+                //await page.waitForTimeout(3000);
+              }
             // await frame.waitForSelector(loadingScreenId);
             // await frame.waitForSelector(loadingScreenId, { hidden: true });
-            await page.waitForTimeout(3000);
+            
 
-            //} catch (error) {
-            //  console.error("Error in resubmitting component number " + compoIndex+ " in customtemplate Id: "+ customTemplateId);
-            //   console.error(error);
-            //   finishedFlag = true;
-            // }
+            } catch (error) {
+             console.error("Error in resubmitting component number " + compoIndex+ " in customtemplate Id: "+ customTemplateId);
+              console.error(error);
+              finishedFlag = true;
+            }
+            //check if submitting iframe no longer exists, meaning the cmoponent has been fully submitted.
+            if ((await page.$(reloadingLoaderCssSelector)) !== null || (await page.$(iframeClassName)) === null) {
+              //console.log("Finished updating");
+              finishedFlag = true;
+              await page.waitForSelector(reloadingLoaderCssSelector, {hidden: true});
+            }  
+            
 
             //check for error modal
             if ((await page.$(errorBtnCssSelector)) !== null) {
@@ -188,38 +205,56 @@ GetInputFromFile();
               }
             } else {
               //console.log("no error modal detected.");
-              //try {
-              await frame.waitForSelector(loadingScreenId);
-              await frame.waitForSelector(loadingScreenId, {
-                hidden: true,
-                timeout: 120000,
-              });
-              //} catch (error) {
-              //  console.error("Error in waiting for the loading screen in custom template id: " + customTemplateId);
-              //  console.error(error);
-              //}
+              try {
+                if((await page.$(iframeClassName)) !== null){
+                  //console.log("checking for frame loading screen.");
+                  await frame.waitForSelector("#loader", {visible: true});
+                  //console.log("found frame loading screen");
+                  await frame.waitForSelector("#loader", {hidden: true});
+                  //console.log("Found loading screen");
+                  // await frame.waitForSelector(loadingScreenId, {
+                  //   hidden: true,
+                  //   timeout: 120000,
+                  // });
+                  //console.log("Loading screen gone");
+                  await page.waitForTimeout(5000);
+                }
+
+              } catch (error) {
+               console.error("Error in waiting for the loading screen in custom template id: " + customTemplateId);
+               console.error(error);
+              }
             }
 
-            //check if updating loading screen loads, meaning the cmoponent has been fully submitted.
-            if (await page.$(updatingScreenIdName)) {
-              // console.log("Finished updating");
+            //check if submitting iframe no longer exists, meaning the cmoponent has been fully submitted.
+            if ((await page.$(reloadingLoaderCssSelector)) !== null || (await page.$(iframeClassName)) === null) {
+              //console.log("Finished updating");
               finishedFlag = true;
-            }
+              await page.waitForSelector(reloadingLoaderCssSelector, {hidden: true});
+            }            
           }
 
           //try {
           console.log(
-            "Finished submitting component number " +
-              compoIndex +
-              "! In custom template id: " +
-              customTemplateId
+            `Finished submitting component number ${compoIndex}! In custom template id: ${customTemplateId}`
           );
           //await page.waitForSelector(updatingScreenIdName);
           //console.log("Found updating screen!");
-          await page.waitForSelector(updatingScreenIdName, {
-            hidden: true,
-            timeout: 120000,
-          });
+          try{
+            await page.waitForSelector(updatingScreenIdName, {
+              hidden: true,
+              timeout: 60000
+            });
+          }catch(error){
+            console.error(`Error in id: ${customTemplateId} at compo number ${compoIndex}. Name: ${compoHeader}.`);
+            console.error(error);
+            fs.writeFileSync(
+              outputFilePath,
+              `Error in id: ${customTemplateId} at compo number ${compoIndex} with compo name ${compoHeader}. Error : ${error}\n`,
+              { flag: "a" }
+            );
+          }
+
           //console.log("Updating screen closed!");
           //} catch (error) {
           //  console.error("Error in waiting for the updating screen in custom template id: "+customTemplateId);
@@ -301,7 +336,7 @@ GetInputFromFile();
   //   cluster.queue(customTemplateId);
   // });
 
-  cluster.queue(18895); //prod
+  cluster.queue(19692); //prod
   //cluster.queue(6529); //local
   //cluster.queue(6585); //staging
 
@@ -377,7 +412,7 @@ async function PublishChanges(
         publishBtn.click();
       }),
     ]);
-    console.log("Clicked publish button.");
+    console.log(`Clicked publish button on template id: ${customTemplateId}`);
   } catch (error) {
     console.error(
       "Error in clicking publish in customtemplate id: " + customTemplateId
@@ -408,45 +443,12 @@ async function PublishChanges(
         publishBtn.click();
       }),
     ]);
-    console.log("Clicked publish button.");
+    console.log(`Clicked publish button on template id: ${customTemplateId}`);
   } catch (error) {
     console.error(
       "Error in clicking publish in customtemplate id: " + customTemplateId
     );
     console.error(error);
-  }
-}
-
-async function CheckForErrorModal(
-  page,
-  errorBtnCssSelector,
-  customTemplateId,
-  frame,
-  loadingScreenId
-) {
-  if ((await page.$(errorBtnCssSelector)) !== null) {
-    //console.log("error modal detected!");
-    try {
-      await page.click(errorBtnCssSelector);
-    } catch (error) {
-      console.error(
-        "Error in clicking the error button in custom template id: " +
-          customTemplateId
-      );
-      console.error(error);
-    }
-  } else {
-    //console.log("no error modal detected.");
-    try {
-      await frame.waitForSelector(loadingScreenId);
-      await frame.waitForSelector(loadingScreenId, { hidden: true });
-    } catch (error) {
-      console.error(
-        "Error in waiting for the loading screen in custom template id: " +
-          customTemplateId
-      );
-      console.error(error);
-    }
   }
 }
 
