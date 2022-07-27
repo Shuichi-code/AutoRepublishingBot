@@ -10,7 +10,7 @@ let dataArray;
 const inputFilePath = "CustomTemplateIdList.csv";
 const outputFilePath = "done.csv";
 const numberOfBots = 1;
-const debugMode = true;
+const debugMode = false;
 const taskTimeOut = 4800 * 1000; //in milliseconds
 const retryLimit = 1; //how many retries if a task fails
 const botUsername = process.env.REALTAIR_USERNAME;
@@ -55,7 +55,7 @@ GetInputFromFile();
 
     const pitchProdURL = "https://pitch.realtair.com";
     const pitchStagingURL = "https://staging-pitch.realtair.com";
-    const pitchDashboardURL = pitchProdURL;
+    const pitchDashboardURL = pitchStagingURL;
     let compoHeader;
 
     await Login(page, pitchDashboardURL, customTemplateId);
@@ -85,237 +85,9 @@ GetInputFromFile();
     //  console.error("Error in loading screen for customtemplate Id: "+customTemplateId);
     //  console.error(error);
     //}
-    let compoCount = 0;
-    compoCount = await page.$$eval(pencilIconClass, (compos) => compos.length);
-    // console.log("Number of compos " + compoCount);
-
-    if (compoCount !== 0 && compoCount !== null) {
-      // console.log("Found compos!");
-      try {
-        await page.waitForSelector(pencilIconClass);
-        // console.log("Found edit icong!");
-      } catch (error) {
-        console.error(
-          "No pencil icon found for customtemplate Id: " + customTemplateId
-        );
-        console.error(error);
-      }
-      const compoEditButtons = await page.$$(pencilIconClass);
-      // console.log("Got edit buttons");
-      let compoIndex = 1;
-      for (let element of compoEditButtons) {
-        try {
-          await element.click();
-          await page.waitForTimeout(5000);
-          // console.log("click the edit button");
-        } catch (error) {
-          console.error(
-            "Error in clicking the compo edit button in custom template id: " +
-              customTemplateId
-          );
-          console.error(error);
-        }
-
-        if ((await page.$(errorBtnCssSelector)) !== null) {
-          console.log(
-            "Error has occurred when clicking edit button of compo number " +
-              compoIndex +
-              " of customtemplate Id: " +
-              customTemplateId
-          );
-          try {
-            await page.click(errorBtnCssSelector);
-          } catch (error) {
-            console.error(
-              "Error in clicking the error button in custom template id: " +
-                customTemplateId
-            );
-            console.error(error);
-          }
-          compoIndex++;
-          continue;
-        }
-        // console.log("No error found");
-
-        const iframeClassName = "iframe.custom-sections-modal";
-        if ((await page.$(iframeClassName)) !== null) {
-          // console.log("Iframe loaded");
-          let elementHandle;
-          let frame;
-          //try {
-          await page.waitForSelector(iframeClassName);
-          await page.waitForSelector(loadingScreenId, { hidden: true });
-          elementHandle = await page.$(iframeClassName);
-          frame = await elementHandle.contentFrame();
-          // } catch (error) {
-          //   console.error(
-          //     "Error waiting for component frame in componentId: " +
-          //       customTemplateId
-          //   );
-          //   console.error(error);
-          // }
-
-          //Wait for the iframe to pop out and click on the submit button
-          let finishedFlag = false;
-          //getCompoHeader
-          try {
-            compoHeader = await frame.$eval(".hidden-xs", element => element.textContent.match(/'([^']+)'/)[1]);            
-          } catch (error) {
-            console.error("Can't find compo name");
-          }
-          //console.log(compoHeader);
-          while (!finishedFlag) {
-            try {
-              if((await page.$(iframeClassName)) !== null){
-                //await frame.waitForSelector(loadingScreenId, { visible: true });
-                //await frame.waitForSelector(loadingScreenId, { hidden: true });
-
-                await frame.waitForTimeout(3000); // fix for colorpicker issue
-                await frame.waitForSelector(submitBtnId, { visible: true });
-                await frame.$eval(submitBtnId, (submitBtn) => {
-                  submitBtn.click();
-                });
-                //await page.waitForTimeout(3000);
-              }
-            // await frame.waitForSelector(loadingScreenId);
-            // await frame.waitForSelector(loadingScreenId, { hidden: true });
-            
-
-            } catch (error) {
-             console.error("Error in resubmitting component number " + compoIndex+ " in customtemplate Id: "+ customTemplateId);
-              console.error(error);
-              finishedFlag = true;
-            }
-            //check if submitting iframe no longer exists, meaning the cmoponent has been fully submitted.
-            if ((await page.$(reloadingLoaderCssSelector)) !== null || (await page.$(iframeClassName)) === null) {
-              //console.log("Finished updating");
-              finishedFlag = true;
-              try {
-                await page.waitForSelector(reloadingLoaderCssSelector, {hidden: true, timeout: 60000});
-              } catch (error) {
-                console.error(`Error in id: ${customTemplateId} at compo number ${compoIndex} with compo name ${compoHeader}`);
-                fs.writeFileSync(
-                  outputFilePath,
-                  `Error in id: ${customTemplateId} at compo number ${compoIndex} with compo name ${compoHeader}. Error : ${error}\n`,
-                  { flag: "a" }
-                );
-              }              
-            }  
-            
-
-            //check for error modal
-            if ((await page.$(errorBtnCssSelector)) !== null) {
-              //console.log("error modal detected!");
-              try {
-                await page.click(errorBtnCssSelector);
-              } catch (error) {
-                console.error(
-                  "Error in clicking the error button in custom template id: " +
-                    customTemplateId
-                );
-                console.error(error);
-              }
-            } else {
-              //console.log("no error modal detected.");
-              try {
-                if((await page.$(iframeClassName)) !== null){
-                  //console.log("checking for frame loading screen.");
-                  await frame.waitForSelector("#loader", {visible: true});
-                  //console.log("found frame loading screen");
-                  await frame.waitForSelector("#loader", {hidden: true});
-                  //console.log("Found loading screen");
-                  // await frame.waitForSelector(loadingScreenId, {
-                  //   hidden: true,
-                  //   timeout: 120000,
-                  // });
-                  //console.log("Loading screen gone");
-                  await page.waitForTimeout(5000);
-                }
-              } catch (error) {
-               console.error("Error in waiting for the loading screen in custom template id: " + customTemplateId);
-               console.error(error);
-              }
-            }
-
-            //check if submitting iframe no longer exists, meaning the cmoponent has been fully submitted.
-            if ((await page.$(reloadingLoaderCssSelector)) !== null || (await page.$(iframeClassName)) === null) {
-              //console.log("Finished updating");
-              finishedFlag = true;
-              try {
-                await page.waitForSelector(reloadingLoaderCssSelector, {hidden: true, timeOut: 60000});
-              } catch (error) {
-                console.error(`Error in id: ${customTemplateId} at compo number ${compoIndex} with compo name ${compoHeader}`);
-                fs.writeFileSync(
-                  outputFilePath,
-                  `Error in id: ${customTemplateId} at compo number ${compoIndex} with compo name ${compoHeader}. Error : ${error}\n`,
-                  { flag: "a" }
-                );
-              }              
-            }
-            if ((await page.$(errorBtnCssSelector)) !== null) {
-              //console.log("error modal detected!");
-              try {
-                await page.click(errorBtnCssSelector);
-              } catch (error) {
-                console.error(
-                  "Error in clicking the error button in custom template id: " +
-                    customTemplateId
-                );
-                console.error(error);
-              }
-            }           
-          }
-
-          //try {
-          console.log(
-            `Finished submitting component number ${compoIndex}! In custom template id: ${customTemplateId}`
-          );
-          //await page.waitForSelector(updatingScreenIdName);
-          //console.log("Found updating screen!");
-          try{
-            await page.waitForSelector(updatingScreenIdName, {
-              hidden: true,
-              timeout: 60000
-            });
-          }catch(error){
-            console.error(`Error in id: ${customTemplateId} at compo number ${compoIndex}. Name: ${compoHeader}.`);
-            console.error(error);
-            fs.writeFileSync(
-              outputFilePath,
-              `Error in id: ${customTemplateId} at compo number ${compoIndex} with compo name ${compoHeader}. Error : ${error}\n`,
-              { flag: "a" }
-            );
-          }
-
-          //console.log("Updating screen closed!");
-          //} catch (error) {
-          //  console.error("Error in waiting for the updating screen in custom template id: "+customTemplateId);
-          //  console.error(error);
-          //}
-          //console.log("Checking for errors");
-
-          //check if error modal appears after updating
-          if ((await page.$(errorBtnCssSelector)) !== null) {
-            //console.log("error modal detected!");
-            try {
-              await page.click(errorBtnCssSelector);
-            } catch (error) {
-              console.error(
-                "Error in clicking the error button in custom template id: " +
-                  customTemplateId
-              );
-              console.error(error);
-            }
-          }
-          //console.log("Done checking for errors");
-        }
-        compoIndex++;
-      }
-      // console.log("Finished resubmitting all of the components.");
-    }
 
     //click on settings tab
-    //await UpdateCustomTemplateSettings(page, customTemplateId, loadingScreenId, reloadingLoaderCssSelector);
+    await UpdateCustomTemplateSettings(page, customTemplateId, loadingScreenId, reloadingLoaderCssSelector);
 
     //click the publish button
     //await PublishChanges(page, reloadingLoaderCssSelector, customTemplateId);
@@ -368,9 +140,9 @@ GetInputFromFile();
   //   cluster.queue(customTemplateId);
   // });
 
-  cluster.queue(64); //prod
+  //cluster.queue(64); //prod
   //cluster.queue(6529); //local
-  //cluster.queue(6761); //staging
+  cluster.queue(6761); //staging
 
   //Error handling when task cannot be completed
   cluster.on("taskerror", (err, data, willRetry) => {
@@ -405,7 +177,7 @@ GetInputFromFile();
 
 async function GotoTemplatePage(page, customTemplateId) {
   //try {
-    const url = `https://pitch.realtair.com/custom-template/${customTemplateId}/run/edit-custom-template?returnUrl=https://pitch.realtair.com/templates`;
+    const url = `https://staging-pitch.realtair.com/custom-template/${customTemplateId}/run/edit-custom-template?returnUrl=https://staging-pitch.realtair.com/templates`;
     await page.goto(url, { waitUntil: "domcontentloaded" });
     console.log("Going to template editor");
   // } catch (error) {

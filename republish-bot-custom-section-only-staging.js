@@ -55,7 +55,7 @@ GetInputFromFile();
 
     const pitchProdURL = "https://pitch.realtair.com";
     const pitchStagingURL = "https://staging-pitch.realtair.com";
-    const pitchDashboardURL = pitchProdURL;
+    const pitchDashboardURL = pitchStagingURL;
     let compoHeader;
 
     await Login(page, pitchDashboardURL, customTemplateId);
@@ -191,7 +191,7 @@ GetInputFromFile();
               //console.log("Finished updating");
               finishedFlag = true;
               try {
-                await page.waitForSelector(reloadingLoaderCssSelector, {hidden: true, timeout: 60000});
+                await page.waitForSelector(reloadingLoaderCssSelector, {hidden: true});
               } catch (error) {
                 console.error(`Error in id: ${customTemplateId} at compo number ${compoIndex} with compo name ${compoHeader}`);
                 fs.writeFileSync(
@@ -242,7 +242,7 @@ GetInputFromFile();
               //console.log("Finished updating");
               finishedFlag = true;
               try {
-                await page.waitForSelector(reloadingLoaderCssSelector, {hidden: true, timeOut: 60000});
+                await page.waitForSelector(reloadingLoaderCssSelector, {hidden: true});
               } catch (error) {
                 console.error(`Error in id: ${customTemplateId} at compo number ${compoIndex} with compo name ${compoHeader}`);
                 fs.writeFileSync(
@@ -368,9 +368,9 @@ GetInputFromFile();
   //   cluster.queue(customTemplateId);
   // });
 
-  cluster.queue(64); //prod
+  //cluster.queue(21184); //prod
   //cluster.queue(6529); //local
-  //cluster.queue(6761); //staging
+  cluster.queue(6710); //staging
 
   //Error handling when task cannot be completed
   cluster.on("taskerror", (err, data, willRetry) => {
@@ -405,9 +405,9 @@ GetInputFromFile();
 
 async function GotoTemplatePage(page, customTemplateId) {
   //try {
-    const url = `https://pitch.realtair.com/custom-template/${customTemplateId}/run/edit-custom-template?returnUrl=https://pitch.realtair.com/templates`;
+    const url = `https://staging-pitch.realtair.com/custom-template/${customTemplateId}/run/edit-custom-template?returnUrl=https://staging-pitch.realtair.com/templates`;
     await page.goto(url, { waitUntil: "domcontentloaded" });
-    console.log("Going to template editor");
+    //console.log("Going to template editor");
   // } catch (error) {
   //   console.error(
   //     "Error navigating to templates page in custom template id: " +
@@ -516,7 +516,7 @@ async function Login(page, pitchDashboardURL, customTemplateId) {
       await page.type("#username", botUsername);
       await page.type('input[name="password"]', botPassword);
       const loginBtnId = "#login";
-      await page.waitForSelector(loginBtnId);
+      //await page.waitForSelector(loginBtnId);
       // console.log("Finished typing creds!");
       await Promise.all([
         page.waitForNavigation(),
