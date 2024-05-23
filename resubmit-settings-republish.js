@@ -9,7 +9,7 @@ let dataArray;
 //Configure
 const inputFilePath = "CustomTemplateIdList.csv";
 const outputFilePath = "done.csv";
-const numberOfBots = 1;
+const numberOfBots = 4;
 const debugMode = false;
 const taskTimeOut = 4800 * 1000; //in milliseconds
 const retryLimit = 1; //how many retries if a task fails
@@ -55,7 +55,7 @@ GetInputFromFile();
 
     const pitchProdURL = "https://pitch.realtair.com";
     const pitchStagingURL = "https://staging-pitch.realtair.com";
-    const pitchDashboardURL = pitchStagingURL;
+    const pitchDashboardURL = pitchProdURL;
     let compoHeader;
 
     await Login(page, pitchDashboardURL, customTemplateId);
@@ -136,13 +136,13 @@ GetInputFromFile();
   });
 
   //load the tasks
-  // dataArray.forEach(customTemplateId => {
-  //   cluster.queue(customTemplateId);
-  // });
+  dataArray.forEach(customTemplateId => {
+    cluster.queue(customTemplateId);
+  });
 
   //cluster.queue(64); //prod
   //cluster.queue(6529); //local
-  cluster.queue(6761); //staging
+  //cluster.queue(6761); //staging
 
   //Error handling when task cannot be completed
   cluster.on("taskerror", (err, data, willRetry) => {
@@ -177,7 +177,7 @@ GetInputFromFile();
 
 async function GotoTemplatePage(page, customTemplateId) {
   //try {
-    const url = `https://staging-pitch.realtair.com/custom-template/${customTemplateId}/run/edit-custom-template?returnUrl=https://staging-pitch.realtair.com/templates`;
+    const url = `https://pitch.realtair.com/custom-template/${customTemplateId}/run/edit-custom-template?returnUrl=https://pitch.realtair.com/templates`;
     await page.goto(url, { waitUntil: "domcontentloaded" });
     console.log("Going to template editor");
   // } catch (error) {

@@ -9,9 +9,9 @@ let dataArray;
 //Configure
 const inputFilePath = "CustomTemplateIdList.csv";
 const outputFilePath = "done.csv";
-const numberOfBots = 1;
-const debugMode = true;
-const taskTimeOut = 4800 * 1000; //in milliseconds
+const numberOfBots = 4;
+const debugMode = false;
+const taskTimeOut = 60000 * 1000; //in milliseconds
 const retryLimit = 1; //how many retries if a task fails
 const botUsername = process.env.REALTAIR_USERNAME;
 const botPassword = process.env.REALTAIR_PASSWORD;
@@ -315,7 +315,7 @@ GetInputFromFile();
     }
 
     //click on settings tab
-    //await UpdateCustomTemplateSettings(page, customTemplateId, loadingScreenId, reloadingLoaderCssSelector);
+    await UpdateCustomTemplateSettings(page, customTemplateId, loadingScreenId, reloadingLoaderCssSelector);
 
     //click the publish button
     //await PublishChanges(page, reloadingLoaderCssSelector, customTemplateId);
@@ -364,11 +364,11 @@ GetInputFromFile();
   });
 
   //load the tasks
-  // dataArray.forEach(customTemplateId => {
-  //   cluster.queue(customTemplateId);
-  // });
+  dataArray.forEach(customTemplateId => {
+    cluster.queue(customTemplateId);
+  });
 
-  cluster.queue(64); //prod
+  //cluster.queue(6513); //prod
   //cluster.queue(6529); //local
   //cluster.queue(6761); //staging
 
@@ -562,19 +562,26 @@ async function UpdateCustomTemplateSettings(
   //console.log("Left pane loading screen appeared!");
   await leftPaneFrame.waitForSelector(loadingScreenId, { hidden: true });
   //console.log("Left pane loading screen gone");
-  await page.waitForTimeout(3000);
+  await page.waitForTimeout(5000);
 
   //click on the yes enable logo branding
   //TODO: check if logobranding enable checkbox exists
-  const enableLogoBrandingCheckBoxId = "#LogoBrandingEnabled-true";
-  if ((await leftPaneFrame.$(enableLogoBrandingCheckBoxId)) !== null) {
-    try {
-      await leftPaneFrame.click(enableLogoBrandingCheckBoxId);
-    } catch (error) {
-      console.error("Error in clicking on the enable logo branding checkbox");
-      console.error(error);
-    }
-  }
+  // const enableLogoBrandingCheckBoxId = "input#LogoBrandingEnabled-true";
+  // if ((await leftPaneFrame.$(enableLogoBrandingCheckBoxId)) !== null) {
+  //   //console.log("found checkbox for enable logo branding")
+  //   try {
+      
+  //     await leftPaneFrame.waitForSelector(enableLogoBrandingCheckBoxId, {visible:true});
+  //     console.log("Can see the checkbox");
+  //     await leftPaneFrame.click(enableLogoBrandingCheckBoxId);
+  //   } catch (error) {
+  //     console.error("Error in clicking on the enable logo branding checkbox");
+  //     console.error(error);
+  //   }
+  // }
+  // else{
+  //   console.log("cannot find logobranding checkbox");
+  // }
 
   //click the settings submit button
   try {

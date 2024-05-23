@@ -149,7 +149,7 @@ try {
           while (!finishedFlag) {
             try {
 
-                await frame.waitForSelector(loadingScreenId);
+                //await frame.waitForSelector(loadingScreenId, {visible: true});
                 await frame.waitForSelector(loadingScreenId, { hidden: true });
                 await frame.waitForSelector(submitBtnId, { visible: true });
                 await frame.$eval(submitBtnId, submitBtn => {
@@ -178,7 +178,7 @@ try {
             } else {
               //console.log("no error modal detected.");
               try {
-                await frame.waitForSelector(loadingScreenId);
+                await frame.waitForSelector(loadingScreenId), {visible : true};
                 await frame.waitForSelector(loadingScreenId, { hidden: true });
               } catch (error) {
                 console.error("Error in waiting for the loading screen in custom template id: " + presetTemplateId);
@@ -195,7 +195,7 @@ try {
 
           try {
             console.log("Finished submitting component number " + compoIndex + "! In custom template id: "+ presetTemplateId);
-            await page.waitForSelector(updatingScreenIdName);
+            await page.waitForSelector(updatingScreenIdName, {visible: true});
             //console.log("Found updating screen!");
             await page.waitForSelector(updatingScreenIdName, { hidden: true });
             //console.log("Updating screen closed!");          
@@ -257,7 +257,7 @@ try {
   //   cluster.queue(presetTemplateId);
   // });
 
-  cluster.queue(59); //prod
+  cluster.queue(22); //prod
   //cluster.queue(6529); //local
   //cluster.queue(6585); //staging
 
